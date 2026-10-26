@@ -33,6 +33,11 @@ import { createPortal } from "react-dom";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 import {
 	CURRENT_SETTINGS_VERSION,
+	DICTATION_LANGUAGES,
+	DICTATION_MODELS,
+	FACTORY_SETTINGS,
+	isDictationLanguage,
+	isDictationModel,
 	type AgentSettings,
 	type AppearanceSettings,
 	type CompactionSettings,
@@ -40,7 +45,7 @@ import {
 	type UserSettings,
 } from "@/src/core";
 import { useAppearance } from "./appearance.tsx";
-import { SettingsSection } from "./controls.tsx";
+import { SettingsRow, SettingsSection, ThinSelect, Toggle } from "./controls.tsx";
 import { UpdateSettings } from "./update-settings.tsx";
 import { AgentSection } from "./agent-section.tsx";
 import type { ModelsSettings } from "@/src/core";
@@ -52,6 +57,38 @@ import { AppearanceSection, GraphSection } from "./appearance-section.tsx";
 import { KeyboardSection } from "./keyboard-section.tsx";
 import { ChatGPTUIProvider } from "./chatgpt-connection.tsx";
 import { NativeSubscriptionUIProvider } from "./subscription-connections.tsx";
+
+const DICTATION_LANGUAGE_HINT = "Language and model used by Deepgram for speech recognition.";
+const DICTATION_ENDPOINTING_HINT = "Silence before a phrase is finalized, in milliseconds.";
+const DICTATION_KEYTERMS_HINT = "One term per line. Use names and technical vocabulary you say often.";
+
+function DictationKeytermsInput({
+	value,
+	onCommit,
+}: {
+	value: string[];
+	onCommit: (next: string[]) => void;
+}) {
+	const [draft, setDraft] = useState(value.join("\n"));
+	useEffect(() => setDraft(value.join("\n")), [value]);
+	return (
+		<textarea
+			value={draft}
+			aria-label="dictation keyterms"
+			data-testid="input-dictation-keyterms"
+			placeholder="LearnHarness&#10;knowledge graph"
+			onChange={(event) => setDraft(event.target.value)}
+			onBlur={() => {
+				const next = draft
+					.split(/\r?\n/)
+					.map((term) => term.trim())
+					.filter(Boolean);
+				if (next.join("\n") !== value.join("\n")) onCommit(next);
+			}}
+			className="h-20 w-56 resize-y rounded-sm border border-border bg-background px-2 py-1 font-ui text-xs text-foreground outline-none placeholder:text-muted-foreground/60"
+		/>
+	);
+}
 
 /** Owner (2026-09-20): hints earn their place — mechanics-explaining
  *  prose is out; only the keyboard note stays (storage location is a
@@ -366,6 +403,129 @@ export function SettingsDialogBody({
 											void write("general", { ...record.general, autoUpdate: on })
 										}
 									/>
+									<SettingsRow
+										label="Dictation language"
+										hint={DICTATION_LANGUAGE_HINT}
+										testid="row-dictation-language"
+									>
+										<ThinSelect
+											value={record.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage}
+											ariaLabel="dictation language"
+											testid="select-dictation-language"
+											onChange={(next) => {
+												if (
+													isDictationLanguage(next) &&
+													(
+														(record.general?.dictationModel ?? FACTORY_SETTINGS.general.dictationModel) !== "nova-3-medical" ||
+														next === "en" ||
+														next === "multi"
+													)
+												) {
+													void write("general", { ...record.general, dictationLanguage: next });
+												}
+											}}
+										>
+											{DICTATION_LANGUAGES.map((language) => (
+												<option
+													key={language.id}
+													value={language.id}
+													disabled={
+														(record.general?.dictationModel ?? FACTORY_SETTINGS.general.dictationModel) === "nova-3-medical" &&
+														language.id !== "en" &&
+														language.id !== "multi"
+													}
+												>
+													{language.label}
+												</option>
+											))}
+										</ThinSelect>
+									</SettingsRow>
+									<SettingsRow label="Dictation model" testid="row-dictation-model">
+										<ThinSelect
+											value={record.general?.dictationModel ?? FACTORY_SETTINGS.general.dictationModel}
+											ariaLabel="dictation model"
+											testid="select-dictation-model"
+											onChange={(next) => {
+												if (
+													isDictationModel(next) &&
+													(next !== "nova-3-medical" ||
+														(record.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage) === "en" ||
+														(record.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage) === "multi")
+												) {
+													void write("general", { ...record.general, dictationModel: next });
+												}
+											}}
+										>
+											{DICTATION_MODELS.map((model) => (
+												<option
+													key={model.id}
+													value={model.id}
+													disabled={
+														model.id === "nova-3-medical" &&
+														(record.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage) !== "en" &&
+														(record.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage) !== "multi"
+													}
+												>
+													{model.label}
+												</option>
+											))}
+										</ThinSelect>
+									</SettingsRow>
+									<SettingsRow
+										label="Endpointing"
+										hint={DICTATION_ENDPOINTING_HINT}
+										testid="row-dictation-endpointing"
+									>
+										<input
+											type="number"
+											min={50}
+											max={2000}
+											step={1}
+											value={record.general?.dictationEndpointing ?? FACTORY_SETTINGS.general.dictationEndpointing}
+											aria-label="dictation endpointing"
+											data-testid="input-dictation-endpointing"
+											onChange={(event) => {
+												const next = Number(event.target.value);
+												if (Number.isInteger(next) && next >= 50 && next <= 2000)
+													void write("general", { ...record.general, dictationEndpointing: next });
+											}}
+											className="h-7 w-20 rounded-sm border border-border bg-background px-2 font-ui text-xs text-foreground outline-none"
+										/>
+									</SettingsRow>
+									<SettingsRow label="Smart formatting" testid="row-dictation-smart-format">
+										<Toggle
+											checked={record.general?.dictationSmartFormat ?? FACTORY_SETTINGS.general.dictationSmartFormat}
+											label="dictation smart formatting"
+											onChange={(on) => void write("general", { ...record.general, dictationSmartFormat: on })}
+										/>
+									</SettingsRow>
+									<SettingsRow label="Numerals" hint="Convert spoken numbers to digits." testid="row-dictation-numerals">
+										<Toggle
+											checked={record.general?.dictationNumerals ?? FACTORY_SETTINGS.general.dictationNumerals}
+											label="dictation numerals"
+											onChange={(on) => void write("general", { ...record.general, dictationNumerals: on })}
+										/>
+									</SettingsRow>
+									<SettingsRow label="Filler words" hint="Keep words such as “um” and “uh”." testid="row-dictation-filler-words">
+										<Toggle
+											checked={record.general?.dictationFillerWords ?? FACTORY_SETTINGS.general.dictationFillerWords}
+											label="dictation filler words"
+											onChange={(on) => void write("general", { ...record.general, dictationFillerWords: on })}
+										/>
+									</SettingsRow>
+									<SettingsRow label="Profanity filter" hint="Replace recognized profanity with asterisks." testid="row-dictation-profanity-filter">
+										<Toggle
+											checked={record.general?.dictationProfanityFilter ?? FACTORY_SETTINGS.general.dictationProfanityFilter}
+											label="dictation profanity filter"
+											onChange={(on) => void write("general", { ...record.general, dictationProfanityFilter: on })}
+										/>
+									</SettingsRow>
+									<SettingsRow label="Keyterms" hint={DICTATION_KEYTERMS_HINT} testid="row-dictation-keyterms">
+										<DictationKeytermsInput
+											value={record.general?.dictationKeyterms ?? FACTORY_SETTINGS.general.dictationKeyterms}
+											onCommit={(next) => void write("general", { ...record.general, dictationKeyterms: next })}
+										/>
+									</SettingsRow>
 								</SettingsSection>
 							)}
 							{active === "keys" && (
