@@ -11,8 +11,12 @@
 		"NEXT_TELEMETRY_DISABLED": "1"
 	},
 	"mounts": [
-		"source=learnharness-npm-cache,target=/home/node/.npm,type=volume"
+		"source=learnharness-npm-cache,target=/home/node/.npm,type=volume",
+		"source=${localEnv:SSH_AUTH_SOCK},target=/tmp/vscode-ssh-auth.sock,type=bind"
 	],
+	"remoteEnv": {
+		"SSH_AUTH_SOCK": "/tmp/vscode-ssh-auth.sock"
+	},
 	"forwardPorts": [
 		3000
 	],
