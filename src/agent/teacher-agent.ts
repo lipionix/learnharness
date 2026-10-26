@@ -99,6 +99,10 @@ export function responseLanguageInstruction(language: ResponseLanguage): string 
 	].join("\n");
 }
 
+export function learnerSystemPrompt(kind: "teacher" | "practice", language: ResponseLanguage): string {
+	return `${composeInstructions(kind)}\n\n---\n\n${responseLanguageInstruction(language)}`;
+}
+
 // The switch-free source composition, cached per kind (module-load once).
 // With promptSwitches provided, baseAgentOptions composes FRESH per turn —
 // an override file written while its switch is ON must flip the next

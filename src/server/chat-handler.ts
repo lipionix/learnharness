@@ -45,7 +45,7 @@ import { applyParkedDismissal } from "./dismissal-park.ts";
 import { registerTurn, rememberTurnFailure, unregisterTurn } from "./turn-runs.ts";
 import { persistTurn, triggerExtraction, TurnPersistenceError } from "./turn-service.ts";
 import { hasProbeDone, danglingQuestionOf } from "../core/native-messages.ts";
-import { composeInstructions, responseLanguageInstruction } from "../agent/teacher-agent.ts";
+import { learnerSystemPrompt } from "../agent/teacher-agent.ts";
 import { ensureCompacted, kickCompaction, effectiveThresholdTokens } from "./compaction.ts";
 import { catalogContextLimits, refreshConnectionCatalog } from "./model-catalog.ts";
 import { emit } from "../core/events.ts";
@@ -255,7 +255,7 @@ export async function handleChatInput(
 				catalogContextLimits().get(modelIdForCompaction),
 			),
 			systemPromptTokens: Math.ceil(
-				`${composeInstructions(record.kind === "practice" ? "practice" : "teacher")}\n\n---\n\n${responseLanguageInstruction(record.settings?.responseLanguage ?? "automatic")}`.length / 4,
+				learnerSystemPrompt(record.kind === "practice" ? "practice" : "teacher", record.settings?.responseLanguage ?? "automatic").length / 4,
 			),
 		},
 		chatId,
@@ -616,7 +616,10 @@ export async function handleChatInput(
 								catalogContextLimits().get(kickModelId),
 							),
 							systemPromptTokens: Math.ceil(
-								`${composeInstructions(freshRecord.kind === "practice" ? "practice" : "teacher")}\n\n---\n\n${responseLanguageInstruction(freshRecord.settings?.responseLanguage ?? "automatic")}`.length / 4,
+								learnerSystemPrompt(
+									freshRecord.kind === "practice" ? "practice" : "teacher",
+									freshRecord.settings?.responseLanguage ?? "automatic",
+								).length / 4,
 							),
 						};
 					}, chatId);

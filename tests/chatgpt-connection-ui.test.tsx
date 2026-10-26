@@ -76,6 +76,43 @@ test("Providers is the first/default page; General is last and other pages keep 
  assert.doesNotMatch(html, />Model providers<\/button>/);
 });
 
+test("response language control is present only for an active session and lists the supported choices", () => {
+	const draft = renderToStaticMarkup(<ModelControl />);
+	assert(!draft.includes('data-testid="stats-response-language"'));
+	const session = renderToStaticMarkup(<ModelControl chatId="chat_language" />);
+	assert.match(session, /data-testid="stats-response-language"/);
+	for (const label of ["Automatic", "English", "Spanish", "French", "German", "Portuguese", "Italian", "Dutch", "Japanese", "Chinese", "Korean", "Russian", "Hindi"]) {
+		assert(session.includes(`>${label}</option>`));
+	}
+});
+
+test("response language selection writes the complete session settings object", async () => {
+	const requests: RequestInit[] = [];
+	globalThis.fetch = async (input, init) => {
+		if (input === "/api/models") return Response.json({ models: [], providers: [], slots: {}, defaults: {} });
+		if (input === "/api/settings") return Response.json({ settings: { models: undefined } });
+		if (input === "/api/chats/chat_language") return Response.json({ settings: { model: { provider: "openrouter", id: "model" }, responseLanguage: "automatic" } });
+		if (input === "/api/chats/chat_language/settings") {
+			requests.push(init ?? {});
+			return Response.json({ settings: { responseLanguage: "es" } });
+		}
+		throw new Error(`unexpected fixture request ${String(input)}`);
+	};
+	await mount(<ModelControl chatId="chat_language" />);
+	await act(async () => new Promise<void>((resolve) => setImmediate(resolve)));
+	const select = document.querySelector<HTMLSelectElement>('[data-testid="stats-response-language"]')!;
+	assert(select);
+	await act(async () => {
+		Object.defineProperty(select, "value", { configurable: true, writable: true, value: "es" });
+		select.dispatchEvent(new window.Event("change", { bubbles: true }));
+	});
+	assert.equal(requests.length, 1);
+	assert.deepEqual(JSON.parse(String(requests[0]!.body)), {
+		model: { provider: "openrouter", id: "model" },
+		responseLanguage: "es",
+	});
+});
+
 test("Providers has exactly four ordered sections; unknown variables stay masked/read-only at the end of Model API keys", async () => {
  globalThis.fetch = async (url) => {
   assert.equal(url, "/api/keys");

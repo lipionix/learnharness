@@ -37,7 +37,7 @@ For Windows/Linux packages and the three-OS CI/release flow, see [`desktop-relea
 
 ## Environment (`.env.local`)
 
-Secrets and machine-specific paths only. Model choice and thinking budgets are the user's, not the environment's — BYOK model slots live in **settings** (`models` section: strong/cheap/vision, provider + model id + optional thinking level; per-role and per-chat overrides ride on top). The extraction batch threshold is a settings knob too (`graph.extractionChunkTokens`, default 4096, floor 500).
+Secrets and machine-specific paths only. Model choice, thinking budgets, and response language are the user's, not the environment's — BYOK model slots live in **settings** (`models` section: strong/cheap/vision, provider + model id + optional thinking level; per-role and per-chat overrides ride on top). Each chat can use automatic language inference or explicitly select English, Spanish, French, German, Portuguese, Italian, Dutch, Japanese, Chinese, Korean, Russian, or Hindi. The extraction batch threshold is a settings knob too (`graph.extractionChunkTokens`, default 4096, floor 500).
 
 | Variable | Purpose |
 |---|---|
