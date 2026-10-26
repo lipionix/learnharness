@@ -1,0 +1,43 @@
+{
+	"name": "LearnHarness",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": ".."
+	},
+	"remoteUser": "node",
+	"containerEnv": {
+		"DISPLAY": ":99",
+		"CHROME_PATH": "/usr/bin/chromium",
+		"NEXT_TELEMETRY_DISABLED": "1"
+	},
+	"mounts": [
+		"source=learnharness-npm-cache,target=/home/node/.npm,type=volume"
+	],
+	"forwardPorts": [
+		3000
+	],
+	"portsAttributes": {
+		"3000": {
+			"label": "LearnHarness web app",
+			"onAutoForward": "openBrowser"
+		}
+	},
+	"postCreateCommand": "npm ci",
+	"postStartCommand": "if ! pgrep -x Xvfb >/dev/null; then Xvfb :99 -screen 0 1440x900x24 -ac >/tmp/learnharness-xvfb.log 2>&1 & fi",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"dbaeumer.vscode-eslint",
+				"esbenp.prettier-vscode",
+				"ms-vscode.vscode-typescript-next"
+			],
+			"settings": {
+				"editor.formatOnSave": true,
+				"editor.codeActionsOnSave": {
+					"source.fixAll.eslint": "explicit"
+				},
+				"typescript.tsdk": "node_modules/typescript/lib"
+			}
+		}
+	}
+}
