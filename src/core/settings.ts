@@ -233,7 +233,60 @@ export const ROLE_SLOT: Readonly<Record<ModelRole, ModelSlotName>> = {
 export interface GeneralSettings {
 	/** Automatic startup/24h update checks (default ON). Manual checks bypass this. */
 	autoUpdate?: boolean;
+	/** Deepgram language used for dictation. */
+	dictationLanguage?: DictationLanguage;
+	/** Nova-3 model variant used for dictation. */
+	dictationModel?: DictationModel;
+	/** Silence in milliseconds before Deepgram finalizes a segment. */
+	dictationEndpointing?: number;
+	/** Deepgram's human-readable transcript formatting. */
+	dictationSmartFormat?: boolean;
+	/** Convert spoken numbers to digits where supported. */
+	dictationNumerals?: boolean;
+	/** Preserve filler words such as "um" and "uh". */
+	dictationFillerWords?: boolean;
+	/** Replace recognized profanity with asterisks. */
+	dictationProfanityFilter?: boolean;
+	/** Domain-specific terms to bias Nova-3 recognition toward. */
+	dictationKeyterms?: string[];
 }
+
+export const DICTATION_LANGUAGES = [
+	{ id: "en", label: "English" },
+	{ id: "multi", label: "Multilingual (auto-detect)" },
+	{ id: "es", label: "Español" },
+	{ id: "fr", label: "Français" },
+	{ id: "de", label: "Deutsch" },
+	{ id: "pt", label: "Português" },
+	{ id: "it", label: "Italiano" },
+	{ id: "nl", label: "Nederlands" },
+	{ id: "ja", label: "日本語" },
+	{ id: "hi", label: "हिन्दी" },
+	{ id: "ru", label: "Русский" },
+] as const;
+
+export type DictationLanguage = (typeof DICTATION_LANGUAGES)[number]["id"];
+
+export function isDictationLanguage(value: unknown): value is DictationLanguage {
+	return DICTATION_LANGUAGES.some((language) => language.id === value);
+}
+
+export const DICTATION_MODELS = [
+	{ id: "nova-3", label: "Nova-3 general" },
+	{ id: "nova-3-medical", label: "Nova-3 medical" },
+	{ id: "nova-3-pharma", label: "Nova-3 pharmaceutical" },
+] as const;
+
+export type DictationModel = (typeof DICTATION_MODELS)[number]["id"];
+
+export function isDictationModel(value: unknown): value is DictationModel {
+	return DICTATION_MODELS.some((model) => model.id === value);
+}
+
+export const DICTATION_ENDPOINTING_MIN = 50;
+export const DICTATION_ENDPOINTING_MAX = 2000;
+export const DICTATION_KEYTERM_MAX_COUNT = 50;
+export const DICTATION_KEYTERM_MAX_LENGTH = 100;
 
 /** Agent settings — everything about the non-conversation machinery. */
 export interface AgentSettings {
@@ -396,7 +449,17 @@ export interface FactorySettings {
 
 export const FACTORY_SETTINGS: FactorySettings = {
 	version: CURRENT_SETTINGS_VERSION,
-	general: { autoUpdate: true },
+	general: {
+		autoUpdate: true,
+		dictationLanguage: "en",
+		dictationModel: "nova-3",
+		dictationEndpointing: 300,
+		dictationSmartFormat: true,
+		dictationNumerals: false,
+		dictationFillerWords: false,
+		dictationProfanityFilter: false,
+		dictationKeyterms: [],
+	},
 	appearance: {
 		mode: "dark",
 		background: null, // the dark default (#141414) lives in the mode's derivation curve
@@ -441,6 +504,30 @@ function sanitizeGeneral(raw: Record<string, unknown>): GeneralSettings {
 	const out: GeneralSettings = {};
 	const autoUpdate = boolOrDrop(raw.autoUpdate);
 	if (autoUpdate !== undefined) out.autoUpdate = autoUpdate;
+	if (isDictationLanguage(raw.dictationLanguage)) out.dictationLanguage = raw.dictationLanguage;
+	if (isDictationModel(raw.dictationModel)) out.dictationModel = raw.dictationModel;
+	if (typeof raw.dictationEndpointing === "number" && Number.isFinite(raw.dictationEndpointing)) {
+		out.dictationEndpointing = Math.min(
+			Math.max(Math.floor(raw.dictationEndpointing), DICTATION_ENDPOINTING_MIN),
+			DICTATION_ENDPOINTING_MAX,
+		);
+	}
+	for (const key of ["dictationSmartFormat", "dictationNumerals", "dictationFillerWords", "dictationProfanityFilter"] as const) {
+		const value = boolOrDrop(raw[key]);
+		if (value !== undefined) out[key] = value;
+	}
+	if (
+		Array.isArray(raw.dictationKeyterms) &&
+		raw.dictationKeyterms.length <= DICTATION_KEYTERM_MAX_COUNT &&
+		raw.dictationKeyterms.every(
+			(term) =>
+				typeof term === "string" &&
+				term.trim().length > 0 &&
+				term.length <= DICTATION_KEYTERM_MAX_LENGTH,
+		)
+	) {
+		out.dictationKeyterms = raw.dictationKeyterms.map((term) => term.trim());
+	}
 	return out;
 }
 

@@ -175,6 +175,14 @@ export function resolveSettings(record: UserSettings | null): EffectiveSettings 
 	return {
 		general: {
 			autoUpdate: record?.general?.autoUpdate ?? FACTORY_SETTINGS.general.autoUpdate,
+			dictationLanguage: record?.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage,
+			dictationModel: record?.general?.dictationModel ?? FACTORY_SETTINGS.general.dictationModel,
+			dictationEndpointing: record?.general?.dictationEndpointing ?? FACTORY_SETTINGS.general.dictationEndpointing,
+			dictationSmartFormat: record?.general?.dictationSmartFormat ?? FACTORY_SETTINGS.general.dictationSmartFormat,
+			dictationNumerals: record?.general?.dictationNumerals ?? FACTORY_SETTINGS.general.dictationNumerals,
+			dictationFillerWords: record?.general?.dictationFillerWords ?? FACTORY_SETTINGS.general.dictationFillerWords,
+			dictationProfanityFilter: record?.general?.dictationProfanityFilter ?? FACTORY_SETTINGS.general.dictationProfanityFilter,
+			dictationKeyterms: record?.general?.dictationKeyterms ?? FACTORY_SETTINGS.general.dictationKeyterms,
 		},
 		agent: {
 			models,
@@ -252,5 +260,4 @@ export function graphToolsEnabled(effective: {
 }): boolean {
 	return effective.graph.enabled && (effective.agent.graphTools.enabled ?? true);
 }
-
 

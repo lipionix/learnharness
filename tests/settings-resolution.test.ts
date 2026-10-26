@@ -24,7 +24,17 @@ import { BACKGROUND_MODEL_ROLES, type UserSettings } from "../src/core/settings.
 describe("resolveSettings", () => {
 	it("null record (first boot): non-model knobs land on factory defaults; every model view is EMPTY", () => {
 		const eff = resolveSettings(null);
-		assert.deepEqual(eff.general, { autoUpdate: true });
+		assert.deepEqual(eff.general, {
+			autoUpdate: true,
+			dictationLanguage: "en",
+			dictationModel: "nova-3",
+			dictationEndpointing: 300,
+			dictationSmartFormat: true,
+			dictationNumerals: false,
+			dictationFillerWords: false,
+			dictationProfanityFilter: false,
+			dictationKeyterms: [],
+		});
 		assert.deepEqual(eff.agent.tools, {});
 		assert.deepEqual(eff.agent.prompts, {});
 		assert.deepEqual(eff.agent.search, {});
@@ -51,7 +61,17 @@ describe("resolveSettings", () => {
 	it("explicit record values win over every factory default", () => {
 		const record: UserSettings = {
 			version: 1,
-			general: { autoUpdate: false },
+			general: {
+				autoUpdate: false,
+				dictationLanguage: "es",
+				dictationModel: "nova-3-pharma",
+				dictationEndpointing: 800,
+				dictationSmartFormat: false,
+				dictationNumerals: true,
+				dictationFillerWords: true,
+				dictationProfanityFilter: true,
+				dictationKeyterms: ["API", "Nova 3"],
+			},
 			agent: {
 				models: { researcher: { model: { provider: "openrouter", id: "qwen/qwen3.8-flash" } } },
 				tools: { research: false },
@@ -63,6 +83,14 @@ describe("resolveSettings", () => {
 		};
 		const eff = resolveSettings(record);
 		assert.equal(eff.general.autoUpdate, false);
+		assert.equal(eff.general.dictationLanguage, "es");
+		assert.equal(eff.general.dictationModel, "nova-3-pharma");
+		assert.equal(eff.general.dictationEndpointing, 800);
+		assert.equal(eff.general.dictationSmartFormat, false);
+		assert.equal(eff.general.dictationNumerals, true);
+		assert.equal(eff.general.dictationFillerWords, true);
+		assert.equal(eff.general.dictationProfanityFilter, true);
+		assert.deepEqual(eff.general.dictationKeyterms, ["API", "Nova 3"]);
 		assert.deepEqual(eff.agent.models.researcher, {
 			provider: "openrouter",
 			id: "qwen/qwen3.8-flash",
