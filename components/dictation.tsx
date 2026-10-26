@@ -110,10 +110,14 @@ export function deepgramUrl(options: DictationOptions): string {
 let dictationOptions: DictationOptions = resolveSettings(null).general;
 
 async function refreshDictationOptions(): Promise<void> {
-	const response = await fetch("/api/settings");
-	if (!response.ok) return;
-	const body = (await response.json()) as { settings?: UserSettings | null };
-	dictationOptions = resolveSettings(body.settings ?? null).general;
+	try {
+		const response = await fetch("/api/settings");
+		if (!response.ok) throw new Error(`settings route ${response.status}`);
+		const body = (await response.json()) as { settings?: UserSettings | null };
+		dictationOptions = resolveSettings(body.settings ?? null).general;
+	} catch (error) {
+		console.error("Could not refresh dictation settings; keeping the last known values.", error);
+	}
 }
 
 /** Meter tuning — the owner's tested values, see the file header. */
