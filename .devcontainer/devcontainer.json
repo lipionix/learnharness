@@ -23,7 +23,7 @@
 		}
 	},
 	"postCreateCommand": "npm ci",
-	"postStartCommand": "if ! pgrep -x Xvfb >/dev/null; then Xvfb :99 -screen 0 1440x900x24 -ac >/tmp/learnharness-xvfb.log 2>&1 & fi",
+	"postStartCommand": "if ! pgrep -f '[X]vfb :99([[:space:]]|$)' >/dev/null; then Xvfb :99 -screen 0 1440x900x24 -ac >/tmp/learnharness-xvfb.log 2>&1 & fi",
 	"customizations": {
 		"vscode": {
 			"extensions": [
