@@ -16,8 +16,26 @@ import {
 	parseGeneralSettingsBody,
 	parseCompactionSettingsBody,
 	parseGraphSettingsBody,
+	parseSettingsBody,
 	SETTINGS_SECTIONS,
 } from "../src/server/settings-body.ts";
+
+describe("parseSettingsBody", () => {
+	it("accepts automatic and explicit response languages, while rejecting unknown values", () => {
+		assert.deepEqual(parseSettingsBody({ responseLanguage: "automatic" }), { ok: true, settings: { responseLanguage: "automatic" } });
+		assert.deepEqual(parseSettingsBody({ responseLanguage: "es" }), { ok: true, settings: { responseLanguage: "es" } });
+		assert.equal(parseSettingsBody({ responseLanguage: "xx" }).ok, false);
+		assert.equal(parseSettingsBody({ responseLanguage: 1 }).ok, false);
+	});
+
+	it("keeps response language replace-whole and drops unknown fields", () => {
+		assert.deepEqual(parseSettingsBody({ model: { provider: "openrouter", id: "x" }, responseLanguage: "fr", stale: true }), {
+			ok: true,
+			settings: { model: { provider: "openrouter", id: "x" }, responseLanguage: "fr" },
+		});
+		assert.deepEqual(parseSettingsBody({}), { ok: true, settings: {} });
+	});
+});
 
 describe("parseGeneralSettingsBody", () => {
 	it("parses {} and {autoUpdate} replace-whole", () => {

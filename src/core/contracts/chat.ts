@@ -78,6 +78,30 @@ export interface ChatSettings {
 	/** pi thinking level — must be in the chosen model's supported list
 	 *  (getSupportedThinkingLevels; enforced by the settings route). */
 	thinkingLevel?: ThinkingLevel;
+	/** Language for learner-facing model output; absent means automatic. */
+	responseLanguage?: ResponseLanguage;
+}
+
+export const RESPONSE_LANGUAGES = [
+	{ id: "automatic", label: "Automatic" },
+	{ id: "en", label: "English" },
+	{ id: "es", label: "Spanish" },
+	{ id: "fr", label: "French" },
+	{ id: "de", label: "German" },
+	{ id: "pt", label: "Portuguese" },
+	{ id: "it", label: "Italian" },
+	{ id: "nl", label: "Dutch" },
+	{ id: "ja", label: "Japanese" },
+	{ id: "zh", label: "Chinese" },
+	{ id: "ko", label: "Korean" },
+	{ id: "ru", label: "Russian" },
+	{ id: "hi", label: "Hindi" },
+] as const;
+
+export type ResponseLanguage = (typeof RESPONSE_LANGUAGES)[number]["id"];
+
+export function isResponseLanguage(value: unknown): value is ResponseLanguage {
+	return RESPONSE_LANGUAGES.some((language) => language.id === value);
 }
 
 

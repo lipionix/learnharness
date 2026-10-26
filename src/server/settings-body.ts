@@ -12,7 +12,7 @@
  */
 
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
-import { isHexColor, type ChatSettings } from "../core";
+import { isHexColor, isResponseLanguage, type ChatSettings } from "../core";
 import type {
 	AgentSettings,
 	AppearanceSettings,
@@ -38,6 +38,7 @@ export function parseSettingsBody(body: unknown): SettingsBodyResult<ChatSetting
 	const raw = body as {
 		model?: { provider?: unknown; id?: unknown };
 		thinkingLevel?: unknown;
+		responseLanguage?: unknown;
 	};
 	const settings: ChatSettings = {};
 	if (raw.model !== undefined) {
@@ -56,6 +57,12 @@ export function parseSettingsBody(body: unknown): SettingsBodyResult<ChatSetting
 			return { ok: false, error: "thinkingLevel must be a string" };
 		}
 		settings.thinkingLevel = raw.thinkingLevel as ThinkingLevel;
+	}
+	if (raw.responseLanguage !== undefined) {
+		if (!isResponseLanguage(raw.responseLanguage)) {
+			return { ok: false, error: "responseLanguage must be a supported response language" };
+		}
+		settings.responseLanguage = raw.responseLanguage;
 	}
 	// Wave 7 killed the graph-context injection (owner: zero configuration
 	// beyond chat models — the prober reads its map through tools now); its

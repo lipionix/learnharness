@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ChatSettings, ModelCatalogEntry, ModelCatalogResponse, ModelsSettings, UserSettings } from "@/src/core";
+import { isResponseLanguage, RESPONSE_LANGUAGES, type ChatSettings, type ModelCatalogEntry, type ModelCatalogResponse, type ModelsSettings, type UserSettings } from "@/src/core";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { prettyModel } from "@/components/usage-format";
 import { ModelMenuList, ThinkingMenuList } from "@/components/settings/model-menu";
@@ -252,13 +252,22 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	const apply = useCallback(
 		(provider: string, id: string, level: ThinkingLevel | undefined) => {
 			if (chatId) {
-				void saveChat({ model: { provider, id }, thinkingLevel: level });
+				void saveChat({ ...session, model: { provider, id }, thinkingLevel: level });
 			} else {
 				// composeSlotModel's empty-string convention: no level = unset.
 				void save(composeSlotModel(models, "strong", provider, id, level ?? ""));
 			}
 		},
 		[chatId, models, save, saveChat],
+	);
+
+	const responseLanguage = session?.responseLanguage ?? "automatic";
+	const saveResponseLanguage = useCallback(
+		(next: string) => {
+			if (!chatId || !isResponseLanguage(next)) return;
+			void saveChat({ ...session, responseLanguage: next });
+		},
+		[chatId, saveChat, session],
 	);
 
 	// Shortcut seams (keyboard wave A): ⌘K opens the model menu (the
@@ -314,6 +323,21 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 
 	return (
 		<div ref={containerRef} className="relative flex items-center gap-1.5" data-testid="model-control">
+		{chatId && (
+			<Hint label="Response language" side="bottom">
+				<select
+					value={responseLanguage}
+					aria-label="Response language"
+					data-testid="stats-response-language"
+					onChange={(event) => saveResponseLanguage(event.target.value)}
+					className="max-w-28 rounded-full border bg-card/85 px-2 py-1 text-xs text-card-foreground shadow-lg backdrop-blur transition-colors hover:border-border hover:bg-muted"
+				>
+					{RESPONSE_LANGUAGES.map((language) => (
+						<option key={language.id} value={language.id}>{language.label}</option>
+					))}
+				</select>
+			</Hint>
+		)}
 			<Hint
 				// Trimmed (owner, subtlety round 2026-09-25): "Model selector"
 				// — the long sentence was way too much. ⌘K opens this same

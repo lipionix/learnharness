@@ -22,6 +22,7 @@ import { QUESTION_TOOLS, type EnabledTools } from "../core/pending.ts";
 import { toLlmMessages, nativeInputCause, PRACTICE_PROBLEM_TOOL } from "../core/native-messages.ts";
 import type { ChatGPTRequestCycle } from "./chatgpt-request-cycle.ts";
 import { usageWasAdmitted } from "./subscription-request-cycle.ts";
+import { RESPONSE_LANGUAGES, type ResponseLanguage } from "../core/contracts/chat.ts";
 
 /**
  * The two teaching-side agents (docs/probe-teach-split.md): the PROBER and
@@ -81,6 +82,23 @@ export function composeInstructions(kind: AgentKind, switches?: Record<string, b
 		.join("\n\n---\n\n");
 }
 
+export function responseLanguageInstruction(language: ResponseLanguage): string {
+	if (language === "automatic") {
+		return [
+			"## Response language",
+			"Answer the learner in the dominant language of their latest substantive learner-authored input.",
+			"Follow a clear language switch when the learner changes language; do not switch for brief quoted phrases, proper nouns, code, formulas, or source excerpts.",
+			"Keep code, formulas, identifiers, and quoted source text unchanged. Apply this policy to every learner-facing response, including questions, quizzes, and practice problems.",
+		].join("\n");
+	}
+	const label = RESPONSE_LANGUAGES.find((entry) => entry.id === language)?.label ?? language;
+	return [
+		"## Response language",
+		`Write every learner-facing response in ${label}.`,
+		"Apply this to explanations, questions, quizzes, and practice problems. Keep code, formulas, identifiers, and quoted source text unchanged.",
+	].join("\n");
+}
+
 // The switch-free source composition, cached per kind (module-load once).
 // With promptSwitches provided, baseAgentOptions composes FRESH per turn —
 // an override file written while its switch is ON must flip the next
@@ -121,6 +139,8 @@ export interface AgentBuildOptions {
 	 *  fresh per turn, honoring enabled overrides (switch on + file
 	 *  exists); absent → the cached pure-source composition. */
 	promptSwitches?: Record<string, boolean>;
+	/** Per-session learner-facing response language; absent = no added policy. */
+	responseLanguage?: ResponseLanguage;
 	/** Native conversation identity: the existing persisted chat id, reused
 	 * across reconstructed prober, teacher, and practice Agents.
 	 * Debug: when set AND LH_PROVIDER_EVENTS=1, raw provider stream events
@@ -181,9 +201,12 @@ function baseAgentOptions(kind: AgentKind, opts: AgentBuildOptions, tools: Agent
 	// ("practice" is not a ModelRole) honest about that.
 	const engine = opts.engine ?? piEngineFor(kind as "prober" | "teacher");
 	const stopper = makeQuestionStopper(kind);
-	const systemPrompt = opts.promptSwitches
+	const sourcePrompt = opts.promptSwitches
 		? composeInstructions(kind, opts.promptSwitches)
 		: composedInstructions[kind]!;
+	const systemPrompt = opts.responseLanguage
+		? `${sourcePrompt}\n\n---\n\n${responseLanguageInstruction(opts.responseLanguage)}`
+		: sourcePrompt;
 	// Debug recorder (owner, 2026-10-04): raw provider events when
 	// LH_PROVIDER_EVENTS=1 and the caller handed a chatId; undefined is
 	// the normal no-observer path (tests, env-off).
@@ -340,4 +363,3 @@ export type ProberAgent = ReturnType<typeof createProberAgent>;
 export type TeacherAgent = ReturnType<typeof createTeacherAgent>;
 export type PracticeAgent = ReturnType<typeof createPracticeAgent>;
 export type TeachingAgent = ProberAgent | TeacherAgent | PracticeAgent;
-
