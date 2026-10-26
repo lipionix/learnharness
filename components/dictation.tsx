@@ -108,16 +108,36 @@ export function deepgramUrl(options: DictationOptions): string {
 }
 
 let dictationOptions: DictationOptions = resolveSettings(null).general;
+let refreshGeneration = 0;
+let latestRefresh = Promise.resolve();
 
 async function refreshDictationOptions(): Promise<void> {
+	const generation = ++refreshGeneration;
 	try {
 		const response = await fetch("/api/settings");
 		if (!response.ok) throw new Error(`settings route ${response.status}`);
 		const body = (await response.json()) as { settings?: UserSettings | null };
-		dictationOptions = resolveSettings(body.settings ?? null).general;
+		if (generation === refreshGeneration) {
+			dictationOptions = resolveSettings(body.settings ?? null).general;
+		}
 	} catch (error) {
 		console.error("Could not refresh dictation settings; keeping the last known values.", error);
 	}
+}
+
+function scheduleDictationOptionsRefresh(): Promise<void> {
+	const refresh = refreshDictationOptions();
+	latestRefresh = refresh;
+	return refresh;
+}
+
+async function waitForLatestDictationOptions(): Promise<void> {
+	let refresh = latestRefresh;
+	do {
+		await refresh;
+		if (refresh === latestRefresh) return;
+		refresh = latestRefresh;
+	} while (true);
 }
 
 /** Meter tuning — the owner's tested values, see the file header. */
@@ -340,10 +360,10 @@ export function useDictation({ append }: { append: (text: string) => void }): Di
 	 *  2026-10-01): released by cleanup() — every terminal path runs it. */
 	const waitersRef = useRef<Array<() => void>>([]);
 	useEffect(() => {
-		void refreshDictationOptions();
+		void scheduleDictationOptionsRefresh();
 	}, []);
 	useSettingsSaved((section) => {
-		if (section === "general") void refreshDictationOptions();
+		if (section === "general") void scheduleDictationOptionsRefresh();
 	});
 
 	/** Flush the buffered transcript into the primary input — question claim
@@ -536,6 +556,8 @@ export function useDictation({ append }: { append: (text: string) => void }): Di
 			cleanup();
 			return;
 		}
+		if (gen !== genRef.current) return;
+		await waitForLatestDictationOptions();
 		if (gen !== genRef.current) return;
 		// Mitigation B: the handshake fires the moment the graph is live,
 		// overlapping any remaining token wait — mic-gated, never before it.

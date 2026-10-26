@@ -268,33 +268,37 @@ export function SettingsDialogBody({
 			body: object,
 		) => {
 			setError(null);
-			const res = await fetch(`/api/settings/${section}`, {
-				method: "PUT",
-				headers: { "content-type": "application/json" },
-				body: JSON.stringify(body),
-			});
-			if (!res.ok) {
-				const detail = (await res.json().catch(() => ({}))) as {
-					error?: string;
-				};
-				setError(`${section}: ${detail.error ?? res.status}`);
-				return;
+			try {
+				const res = await fetch(`/api/settings/${section}`, {
+					method: "PUT",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify(body),
+				});
+				if (!res.ok) {
+					const detail = (await res.json().catch(() => ({}))) as {
+						error?: string;
+					};
+					setError(`${section}: ${detail.error ?? res.status}`);
+					return;
+				}
+				// Server truth, never the request body (fix wave, owner repro):
+				// the models section clamps pinned thinking levels on write
+				// (bd68486) — a swap that rides an unsupported level lands
+				// CLAMPED in the record, and the writing surface must show the
+				// stored value in this same interaction, not the optimistic one.
+				const stored = (
+					(await res.json().catch(() => null)) as { settings?: UserSettings } | null
+				)?.settings;
+				setRecord(
+					(prev) =>
+						stored ?? ({ ...(prev ?? {}), [section]: body }) as UserSettings,
+				);
+				notifySettingsSaved(section);
+				if (section === "appearance")
+					onAppearanceChange((stored?.appearance ?? body) as AppearanceSettings);
+			} catch (error) {
+				setError(`${section}: ${error instanceof Error ? error.message : "request failed"}`);
 			}
-			// Server truth, never the request body (fix wave, owner repro):
-			// the models section clamps pinned thinking levels on write
-			// (bd68486) — a swap that rides an unsupported level lands
-			// CLAMPED in the record, and the writing surface must show the
-			// stored value in this same interaction, not the optimistic one.
-			const stored = (
-				(await res.json().catch(() => null)) as { settings?: UserSettings } | null
-			)?.settings;
-			setRecord(
-				(prev) =>
-					stored ?? ({ ...(prev ?? {}), [section]: body }) as UserSettings,
-			);
-			notifySettingsSaved(section);
-			if (section === "appearance")
-				onAppearanceChange(body as AppearanceSettings);
 		},
 		[onAppearanceChange],
 	);
