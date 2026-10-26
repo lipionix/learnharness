@@ -10,7 +10,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createWarmMinter } from "../components/dictation.tsx";
+import { createWarmMinter, deepgramUrl } from "../components/dictation.tsx";
 
 describe("warm-token cache (mitigation D, owner 2026-09-27)", () => {
 	it("caches: concurrent and repeat mints share ONE promise and mint once", async () => {
@@ -29,6 +29,30 @@ describe("warm-token cache (mitigation D, owner 2026-09-27)", () => {
 		assert.equal(await a, "t1");
 		assert.equal(await m.mint(), "t1"); // repeat — still no second mint
 		assert.equal(mints, 1);
+	});
+
+	describe("Deepgram dictation URL", () => {
+		it("serializes the resolved options and repeats encoded keyterms", () => {
+			const url = new URL(deepgramUrl({
+				autoUpdate: true,
+				dictationLanguage: "multi",
+				dictationModel: "nova-3",
+				dictationEndpointing: 800,
+				dictationSmartFormat: true,
+				dictationNumerals: true,
+				dictationFillerWords: false,
+				dictationProfanityFilter: true,
+				dictationKeyterms: ["LearnHarness", "knowledge graph"],
+			}));
+			assert.equal(url.searchParams.get("language"), "multi");
+			assert.equal(url.searchParams.get("model"), "nova-3");
+			assert.equal(url.searchParams.get("endpointing"), "800");
+			assert.equal(url.searchParams.get("smart_format"), "true");
+			assert.equal(url.searchParams.get("numerals"), "true");
+			assert.equal(url.searchParams.get("filler_words"), "false");
+			assert.equal(url.searchParams.get("profanity_filter"), "true");
+			assert.deepEqual(url.searchParams.getAll("keyterm"), ["LearnHarness", "knowledge graph"]);
+		});
 	});
 
 	it("a failed mint resets the cache — the next call re-mints (honest error path)", async () => {

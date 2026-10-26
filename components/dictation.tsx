@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2Icon, MicIcon } from "lucide-react";
 import { useSettingsDialog } from "@/components/settings/settings-dialog";
+import { useSettingsSaved } from "@/components/settings-signal";
+import { resolveSettings, type EffectiveSettings, type UserSettings } from "@/src/core";
 import { Hint } from "@/components/ui/hint";
 
 /**
@@ -86,15 +88,33 @@ import { Hint } from "@/components/ui/hint";
  * endpointing=300, no interims. Silence streams too (the worklet never
  * pauses), so the socket never idles — no KeepAlive needed.
  */
-const DG_URL =
-	"wss://api.deepgram.com/v1/listen" +
-	"?model=nova-3" +
-	"&encoding=linear16" +
-	"&sample_rate=16000" +
-	"&channels=1" +
-	"&smart_format=true" +
-	"&punctuate=true" +
-	"&endpointing=300";
+type DictationOptions = EffectiveSettings["general"];
+
+export function deepgramUrl(options: DictationOptions): string {
+	const params = new URLSearchParams({
+		model: options.dictationModel,
+		language: options.dictationLanguage,
+		encoding: "linear16",
+		sample_rate: "16000",
+		channels: "1",
+		smart_format: String(options.dictationSmartFormat),
+		numerals: String(options.dictationNumerals),
+		filler_words: String(options.dictationFillerWords),
+		profanity_filter: String(options.dictationProfanityFilter),
+		endpointing: String(options.dictationEndpointing),
+	});
+	for (const keyterm of options.dictationKeyterms) params.append("keyterm", keyterm);
+	return `wss://api.deepgram.com/v1/listen?${params.toString()}`;
+}
+
+let dictationOptions: DictationOptions = resolveSettings(null).general;
+
+async function refreshDictationOptions(): Promise<void> {
+	const response = await fetch("/api/settings");
+	if (!response.ok) return;
+	const body = (await response.json()) as { settings?: UserSettings | null };
+	dictationOptions = resolveSettings(body.settings ?? null).general;
+}
 
 /** Meter tuning — the owner's tested values, see the file header. */
 const METER_FLOOR_DB = -50;
@@ -315,6 +335,12 @@ export function useDictation({ append }: { append: (text: string) => void }): Di
 	/** Resolvers waiting for the run to fully end (finish(), owner
 	 *  2026-10-01): released by cleanup() — every terminal path runs it. */
 	const waitersRef = useRef<Array<() => void>>([]);
+	useEffect(() => {
+		void refreshDictationOptions();
+	}, []);
+	useSettingsSaved((section) => {
+		if (section === "general") void refreshDictationOptions();
+	});
 
 	/** Flush the buffered transcript into the primary input — question claim
 	 *  first, composer fallback. Called exactly once per run, at cleanup; the
@@ -366,7 +392,7 @@ export function useDictation({ append }: { append: (text: string) => void }): Di
 			// Minted JWTs authenticate via the "bearer" subprotocol — ["token",
 			// jwt] is rejected at the handshake (verified live; "token" is for
 			// raw API keys only, as in the owner's pi dictate extension).
-			const ws = new WebSocket(DG_URL, ["bearer", token]);
+			const ws = new WebSocket(deepgramUrl(dictationOptions), ["bearer", token]);
 			wsRef.current = ws;
 
 			ws.addEventListener("open", () => {
