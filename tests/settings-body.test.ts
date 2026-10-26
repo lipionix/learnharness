@@ -68,6 +68,7 @@ describe("parseGeneralSettingsBody", () => {
 			{ dictationKeyterms: [""] },
 			{ dictationKeyterms: new Array(51).fill("term") },
 			{ dictationModel: "nova-3-medical", dictationLanguage: "es" },
+			{ dictationModel: "nova-3-pharma", dictationLanguage: "multi" },
 		]) {
 			assert.equal(parseGeneralSettingsBody(body).ok, false, JSON.stringify(body));
 		}

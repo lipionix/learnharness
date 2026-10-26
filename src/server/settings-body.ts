@@ -34,6 +34,7 @@ import {
 	EXTRACTION_CHUNK_TOKENS_FLOOR,
 	MODEL_SLOTS,
 	isDictationLanguage,
+	isDictationLanguageSupportedByModel,
 	isDictationModel,
 } from "../core/settings.ts";
 import { WRITABLE_TOOL_KEYS } from "../core/pending.ts";
@@ -149,12 +150,11 @@ export function parseGeneralSettingsBody(body: unknown): SettingsBodyResult<Gene
 		settings.dictationKeyterms = raw.dictationKeyterms.map((term) => term.trim());
 	}
 	if (
-		settings.dictationModel === "nova-3-medical" &&
+		settings.dictationModel &&
 		settings.dictationLanguage !== undefined &&
-		settings.dictationLanguage !== "en" &&
-		settings.dictationLanguage !== "multi"
+		!isDictationLanguageSupportedByModel(settings.dictationModel, settings.dictationLanguage)
 	) {
-		return { ok: false, error: "nova-3-medical supports only English or multilingual dictation" };
+		return { ok: false, error: `${settings.dictationModel} does not support ${settings.dictationLanguage} dictation` };
 	}
 	return { ok: true, settings };
 }

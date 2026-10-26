@@ -146,6 +146,13 @@ describe("sanitizeUserSettings", () => {
 		}
 	});
 
+	it("invalid dictation model/language combinations drop the model", () => {
+		const out = sanitizeUserSettings({
+			general: { dictationModel: "nova-3-pharma", dictationLanguage: "multi" },
+		});
+		assert.deepEqual(out?.general, { dictationLanguage: "multi" });
+	});
+
 	it("out-of-range numbers CLAMP (proseFontSize, headingWeight)", () => {
 		const out = sanitizeUserSettings({
 			appearance: { proseFontSize: 99, mdRendering: { headingWeight: 999 } },

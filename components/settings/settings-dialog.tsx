@@ -37,6 +37,7 @@ import {
 	DICTATION_MODELS,
 	FACTORY_SETTINGS,
 	isDictationLanguage,
+	isDictationLanguageSupportedByModel,
 	isDictationModel,
 	type AgentSettings,
 	type AppearanceSettings,
@@ -415,10 +416,9 @@ export function SettingsDialogBody({
 											onChange={(next) => {
 												if (
 													isDictationLanguage(next) &&
-													(
-														(record.general?.dictationModel ?? FACTORY_SETTINGS.general.dictationModel) !== "nova-3-medical" ||
-														next === "en" ||
-														next === "multi"
+													isDictationLanguageSupportedByModel(
+														record.general?.dictationModel ?? FACTORY_SETTINGS.general.dictationModel,
+														next,
 													)
 												) {
 													void write("general", { ...record.general, dictationLanguage: next });
@@ -430,9 +430,10 @@ export function SettingsDialogBody({
 													key={language.id}
 													value={language.id}
 													disabled={
-														(record.general?.dictationModel ?? FACTORY_SETTINGS.general.dictationModel) === "nova-3-medical" &&
-														language.id !== "en" &&
-														language.id !== "multi"
+														!isDictationLanguageSupportedByModel(
+															record.general?.dictationModel ?? FACTORY_SETTINGS.general.dictationModel,
+															language.id,
+														)
 													}
 												>
 													{language.label}
@@ -448,9 +449,10 @@ export function SettingsDialogBody({
 											onChange={(next) => {
 												if (
 													isDictationModel(next) &&
-													(next !== "nova-3-medical" ||
-														(record.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage) === "en" ||
-														(record.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage) === "multi")
+													isDictationLanguageSupportedByModel(
+														next,
+														record.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage,
+													)
 												) {
 													void write("general", { ...record.general, dictationModel: next });
 												}
@@ -461,9 +463,10 @@ export function SettingsDialogBody({
 													key={model.id}
 													value={model.id}
 													disabled={
-														model.id === "nova-3-medical" &&
-														(record.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage) !== "en" &&
-														(record.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage) !== "multi"
+														!isDictationLanguageSupportedByModel(
+															model.id,
+															record.general?.dictationLanguage ?? FACTORY_SETTINGS.general.dictationLanguage,
+														)
 													}
 												>
 													{model.label}

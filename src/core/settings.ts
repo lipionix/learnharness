@@ -283,6 +283,17 @@ export function isDictationModel(value: unknown): value is DictationModel {
 	return DICTATION_MODELS.some((model) => model.id === value);
 }
 
+export function isDictationLanguageSupportedByModel(
+	model: DictationModel,
+	language: DictationLanguage,
+): boolean {
+	return model === "nova-3-medical"
+		? language === "en" || language === "multi"
+		: model === "nova-3-pharma"
+			? language === "en"
+			: true;
+}
+
 export const DICTATION_ENDPOINTING_MIN = 50;
 export const DICTATION_ENDPOINTING_MAX = 2000;
 export const DICTATION_KEYTERM_MAX_COUNT = 50;
@@ -506,6 +517,13 @@ function sanitizeGeneral(raw: Record<string, unknown>): GeneralSettings {
 	if (autoUpdate !== undefined) out.autoUpdate = autoUpdate;
 	if (isDictationLanguage(raw.dictationLanguage)) out.dictationLanguage = raw.dictationLanguage;
 	if (isDictationModel(raw.dictationModel)) out.dictationModel = raw.dictationModel;
+	if (
+		out.dictationModel &&
+		out.dictationLanguage &&
+		!isDictationLanguageSupportedByModel(out.dictationModel, out.dictationLanguage)
+	) {
+		delete out.dictationModel;
+	}
 	if (typeof raw.dictationEndpointing === "number" && Number.isFinite(raw.dictationEndpointing)) {
 		out.dictationEndpointing = Math.min(
 			Math.max(Math.floor(raw.dictationEndpointing), DICTATION_ENDPOINTING_MIN),
