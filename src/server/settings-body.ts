@@ -23,7 +23,19 @@ import type {
 	ModelsSettings,
 	RoleModelOverride,
 } from "../core/settings.ts";
-import { BACKGROUND_MODEL_ROLES, COMPACTION_THRESHOLD_FLOOR, EXTRACTION_CHUNK_TOKENS_FLOOR, MODEL_SLOTS } from "../core/settings.ts";
+import {
+	BACKGROUND_MODEL_ROLES,
+	COMPACTION_THRESHOLD_FLOOR,
+	DICTATION_ENDPOINTING_MAX,
+	DICTATION_ENDPOINTING_MIN,
+	DICTATION_KEYTERM_MAX_COUNT,
+	DICTATION_KEYTERM_MAX_LENGTH,
+	DICTATION_MODELS,
+	EXTRACTION_CHUNK_TOKENS_FLOOR,
+	MODEL_SLOTS,
+	isDictationLanguage,
+	isDictationModel,
+} from "../core/settings.ts";
 import { WRITABLE_TOOL_KEYS } from "../core/pending.ts";
 
 /** Parsed-or-rejected — `ok: false` carries the 400's error message. */
@@ -75,7 +87,7 @@ function asRecord(body: unknown): Record<string, unknown> | null {
 	return body as Record<string, unknown>;
 }
 
-/** general: { autoUpdate?: boolean } */
+/** General settings, including the Deepgram dictation controls. */
 export function parseGeneralSettingsBody(body: unknown): SettingsBodyResult<GeneralSettings> {
 	const raw = asRecord(body);
 	if (!raw) return { ok: false, error: "Invalid JSON body" };
@@ -85,6 +97,64 @@ export function parseGeneralSettingsBody(body: unknown): SettingsBodyResult<Gene
 			return { ok: false, error: "autoUpdate must be a boolean" };
 		}
 		settings.autoUpdate = raw.autoUpdate;
+	}
+	if (raw.dictationLanguage !== undefined) {
+		if (!isDictationLanguage(raw.dictationLanguage)) {
+			return { ok: false, error: "dictationLanguage must be a supported dictation language" };
+		}
+		settings.dictationLanguage = raw.dictationLanguage;
+	}
+	if (raw.dictationModel !== undefined) {
+		if (!isDictationModel(raw.dictationModel)) {
+			return { ok: false, error: `dictationModel must be one of ${DICTATION_MODELS.map((model) => model.id).join(", ")}` };
+		}
+		settings.dictationModel = raw.dictationModel;
+	}
+	if (raw.dictationEndpointing !== undefined) {
+		if (
+			typeof raw.dictationEndpointing !== "number" ||
+			!Number.isInteger(raw.dictationEndpointing) ||
+			raw.dictationEndpointing < DICTATION_ENDPOINTING_MIN ||
+			raw.dictationEndpointing > DICTATION_ENDPOINTING_MAX
+		) {
+			return {
+				ok: false,
+				error: `dictationEndpointing must be an integer from ${DICTATION_ENDPOINTING_MIN} to ${DICTATION_ENDPOINTING_MAX}`,
+			};
+		}
+		settings.dictationEndpointing = raw.dictationEndpointing;
+	}
+	for (const key of ["dictationSmartFormat", "dictationNumerals", "dictationFillerWords", "dictationProfanityFilter"] as const) {
+		if (raw[key] !== undefined) {
+			if (typeof raw[key] !== "boolean") return { ok: false, error: `${key} must be a boolean` };
+			settings[key] = raw[key];
+		}
+	}
+	if (raw.dictationKeyterms !== undefined) {
+		if (
+			!Array.isArray(raw.dictationKeyterms) ||
+			raw.dictationKeyterms.length > DICTATION_KEYTERM_MAX_COUNT ||
+			raw.dictationKeyterms.some(
+				(term) =>
+					typeof term !== "string" ||
+					term.trim().length === 0 ||
+					term.length > DICTATION_KEYTERM_MAX_LENGTH,
+			)
+		) {
+			return {
+				ok: false,
+				error: `dictationKeyterms must contain at most ${DICTATION_KEYTERM_MAX_COUNT} non-empty terms of ${DICTATION_KEYTERM_MAX_LENGTH} characters or fewer`,
+			};
+		}
+		settings.dictationKeyterms = raw.dictationKeyterms.map((term) => term.trim());
+	}
+	if (
+		settings.dictationModel === "nova-3-medical" &&
+		settings.dictationLanguage !== undefined &&
+		settings.dictationLanguage !== "en" &&
+		settings.dictationLanguage !== "multi"
+	) {
+		return { ok: false, error: "nova-3-medical supports only English or multilingual dictation" };
 	}
 	return { ok: true, settings };
 }

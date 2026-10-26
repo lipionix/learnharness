@@ -29,6 +29,50 @@ describe("parseGeneralSettingsBody", () => {
 		assert.deepEqual(on.settings, { autoUpdate: true });
 	});
 
+	it("parses the supported Deepgram dictation options", () => {
+		const result = parseGeneralSettingsBody({
+			autoUpdate: false,
+			dictationLanguage: "multi",
+			dictationModel: "nova-3-medical",
+			dictationEndpointing: 800,
+			dictationSmartFormat: true,
+			dictationNumerals: true,
+			dictationFillerWords: false,
+			dictationProfanityFilter: true,
+			dictationKeyterms: ["LearnHarness", "knowledge graph"],
+		});
+		assert.deepEqual(result, {
+			ok: true,
+			settings: {
+				autoUpdate: false,
+				dictationLanguage: "multi",
+				dictationModel: "nova-3-medical",
+				dictationEndpointing: 800,
+				dictationSmartFormat: true,
+				dictationNumerals: true,
+				dictationFillerWords: false,
+				dictationProfanityFilter: true,
+				dictationKeyterms: ["LearnHarness", "knowledge graph"],
+			},
+		});
+	});
+
+	it("rejects invalid dictation option values and incompatible model languages", () => {
+		for (const body of [
+			{ dictationLanguage: "xx" },
+			{ dictationModel: "nova-2" },
+			{ dictationEndpointing: 49 },
+			{ dictationEndpointing: 2001 },
+			{ dictationEndpointing: 300.5 },
+			{ dictationNumerals: "yes" },
+			{ dictationKeyterms: [""] },
+			{ dictationKeyterms: new Array(51).fill("term") },
+			{ dictationModel: "nova-3-medical", dictationLanguage: "es" },
+		]) {
+			assert.equal(parseGeneralSettingsBody(body).ok, false, JSON.stringify(body));
+		}
+	});
+
 	it("rejects non-objects and non-boolean autoUpdate", () => {
 		assert.equal(parseGeneralSettingsBody("x").ok, false);
 		assert.equal(parseGeneralSettingsBody({ autoUpdate: "yes" }).ok, false);
