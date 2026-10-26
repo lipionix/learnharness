@@ -362,8 +362,12 @@ export function SettingsDialogBody({
 								>
 									<UpdateSettings
 										autoUpdate={record.general?.autoUpdate ?? true}
+										responseLanguage={record.general?.responseLanguage ?? "automatic"}
 										onAutoUpdateChange={(on) =>
 											void write("general", { ...record.general, autoUpdate: on })
+										}
+										onResponseLanguageChange={(responseLanguage) =>
+											void write("general", { ...record.general, responseLanguage })
 										}
 									/>
 								</SettingsSection>

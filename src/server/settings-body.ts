@@ -93,6 +93,12 @@ export function parseGeneralSettingsBody(body: unknown): SettingsBodyResult<Gene
 		}
 		settings.autoUpdate = raw.autoUpdate;
 	}
+	if (raw.responseLanguage !== undefined) {
+		if (!isResponseLanguage(raw.responseLanguage)) {
+			return { ok: false, error: "responseLanguage must be a supported response language" };
+		}
+		settings.responseLanguage = raw.responseLanguage;
+	}
 	return { ok: true, settings };
 }
 

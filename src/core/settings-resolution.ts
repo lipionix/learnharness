@@ -175,6 +175,7 @@ export function resolveSettings(record: UserSettings | null): EffectiveSettings 
 	return {
 		general: {
 			autoUpdate: record?.general?.autoUpdate ?? FACTORY_SETTINGS.general.autoUpdate,
+			responseLanguage: record?.general?.responseLanguage ?? FACTORY_SETTINGS.general.responseLanguage,
 		},
 		agent: {
 			models,
@@ -252,5 +253,4 @@ export function graphToolsEnabled(effective: {
 }): boolean {
 	return effective.graph.enabled && (effective.agent.graphTools.enabled ?? true);
 }
-
 

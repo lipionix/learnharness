@@ -33,6 +33,8 @@ export function StatsBar({
 	pricing,
 	dictationSlot,
 	chatId,
+	responseLanguage,
+	onResponseLanguageChange,
 	leadingSlot,
 }: {
 	turns: TurnUsage[];
@@ -43,6 +45,8 @@ export function StatsBar({
 	 *  record; absent on the draft surfaces, where it binds the strong
 	 *  slot (the new-session default). */
 	chatId?: string;
+	responseLanguage?: string;
+	onResponseLanguageChange?: (language: string) => void;
 	/** The dictation strip (STT wave, 2026-09-17): the row's middle is dead
 	 *  space between the session data and the model control — the mic
 	 *  button lives there, and while recording the meter unfurls to fill
@@ -192,7 +196,7 @@ export function StatsBar({
 			{/* The model + thinking control — one controller for the conversation
 			    agents (prober/teacher); the record's `turns` above still folds
 			    the ACTUAL models billed, regardless of what the picker says. */}
-			<ModelControl chatId={chatId} onModelChange={setSelectedModel} />
+			<ModelControl chatId={chatId} onModelChange={setSelectedModel} responseLanguageOverride={responseLanguage} onResponseLanguageChange={onResponseLanguageChange} />
 		</div>
 	);
 }

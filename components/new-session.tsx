@@ -45,6 +45,7 @@ export async function startDraftSession(
 	fetchLike: typeof fetch,
 	mode?: "practice",
 	picks?: readonly DraftPick[],
+	responseLanguage = "automatic",
 ): Promise<string | null> {
 	const t = text.trim();
 	if (!t) return null;
@@ -57,8 +58,8 @@ export async function startDraftSession(
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify(
 			mode === "practice"
-				? { title: t, kind: "practice", ...(picks && picks.length > 0 ? { graphContext: { propositions: picks } } : {}) }
-				: { title: t },
+				? { title: t, kind: "practice", responseLanguage, ...(picks && picks.length > 0 ? { graphContext: { propositions: picks } } : {}) }
+				: { title: t, responseLanguage },
 		),
 	});
 	const { id } = (await res.json()) as { id: string };
@@ -82,6 +83,8 @@ export function DraftShell({
 	picks = [],
 	onOpenPicker,
 	onClearPicks,
+	responseLanguage,
+	onResponseLanguageChange,
 	overlay,
 }: {
 	busy: boolean;
@@ -104,6 +107,8 @@ export function DraftShell({
 	picks?: DraftPick[];
 	onOpenPicker?: () => void;
 	onClearPicks?: () => void;
+	responseLanguage?: string;
+	onResponseLanguageChange?: (language: string) => void;
 	/** THE PICKER SLOT (owner round 10b): the chain-table overlay hosts
 	 *  INSIDE the content column's relative container — the same law as
 	 *  the graph view (the overlay fills its column, never the sidebar).
@@ -211,6 +216,8 @@ export function DraftShell({
 								<StatsBar
 									dictationSlot={<DictationBar dictation={dictation} />}
 									turns={[]}
+									responseLanguage={responseLanguage}
+									onResponseLanguageChange={onResponseLanguageChange}
 								/>
 							</div>
 						</div>
@@ -243,6 +250,7 @@ export function NewSession({ initialConfigured, mode = "teach" }: { initialConfi
 		setText(v);
 	};
 	const [busy, setBusy] = useState(false);
+	const [responseLanguage, setResponseLanguage] = useState("automatic");
 	// THE PICK BAR (owner round 10): the draft's lifted pick set + the
 	// snapshot the standalone chain-table picker reads. Lazy — the graph
 	// is fetched on FIRST open only, then reused.
@@ -302,7 +310,7 @@ export function NewSession({ initialConfigured, mode = "teach" }: { initialConfi
 			return;
 		}
 		setBusy(true);
-		void startDraftSession(draft, fetch, mode === "practice" ? "practice" : undefined, mode === "practice" ? picksRef.current : undefined)
+		void startDraftSession(draft, fetch, mode === "practice" ? "practice" : undefined, mode === "practice" ? picksRef.current : undefined, responseLanguage)
 			.then((target) => {
 				if (target) router.push(target);
 				else setBusy(false);
@@ -321,6 +329,8 @@ export function NewSession({ initialConfigured, mode = "teach" }: { initialConfi
 				picks={picks}
 				onOpenPicker={openPicker}
 				onClearPicks={() => applyPicks([])}
+				responseLanguage={responseLanguage}
+				onResponseLanguageChange={setResponseLanguage}
 				overlay={
 					// THE PICKER (owner round 10b): hosted INSIDE the content
 					// column — absolute inset-0 resolves to the column's relative

@@ -63,6 +63,7 @@ export function Home({
 		},
 	});
 	const [busy, setBusy] = useState(false);
+	const [responseLanguage, setResponseLanguage] = useState("automatic");
 	/* Run end focuses the topic input (owner, 2026-10-01): the hands are on
 	 * the keyboard from the stop. Falling edge only; this surface's only
 	 * dictation target IS this textarea, so no case-split is needed. */
@@ -143,6 +144,7 @@ export function Home({
 				body: JSON.stringify({
 					title: t,
 					...(mode === "practice" ? { kind: "practice" } : {}),
+					responseLanguage,
 					...(practiceProps.length > 0 ? { graphContext: { propositions: practiceProps } } : {}),
 				}),
 			});
@@ -293,6 +295,8 @@ export function Home({
 					<StatsBar
 						dictationSlot={<DictationBar dictation={dictation} />}
 						turns={[] as TurnUsage[]}
+						responseLanguage={responseLanguage}
+						onResponseLanguageChange={setResponseLanguage}
 						leadingSlot={
 							<div className="flex items-center gap-0.5 rounded-md border border-border/60 bg-background p-0.5" data-testid="home-mode-switch">
 								{(["teach", "practice"] as const).map((m) => (

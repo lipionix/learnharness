@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BrailleSpinner } from "@/components/braille-spinner";
 import { SettingsRow, Toggle } from "./controls.tsx";
+import { RESPONSE_LANGUAGES, type ResponseLanguage } from "@/src/core";
 
 /** Observational snapshot from electron/main.cjs; never updater permission. */
 export type UpdateState = {
@@ -60,11 +61,15 @@ export function updateStatusText(state: UpdateState | null): string | null {
 export function UpdateSettings({
 	autoUpdate,
 	onAutoUpdateChange,
+	responseLanguage = "automatic",
+	onResponseLanguageChange,
 	version = APP_VERSION,
 	homepage = HOMEPAGE,
 }: {
 	autoUpdate: boolean;
 	onAutoUpdateChange: (on: boolean) => void;
+	responseLanguage?: ResponseLanguage;
+	onResponseLanguageChange?: (language: ResponseLanguage) => void;
 	version?: string;
 	homepage?: string;
 }) {
@@ -83,6 +88,11 @@ export function UpdateSettings({
 
 	return (
 		<>
+			<SettingsRow label="Default response language" hint="Used for new teaching and practice sessions. Automatic follows the learner's latest substantive message." testid="row-response-language">
+				<select value={responseLanguage} aria-label="Default response language" onChange={(event) => onResponseLanguageChange?.(event.target.value as ResponseLanguage)} className="rounded-lg border bg-card px-2 py-1.5 text-xs text-card-foreground">
+					{RESPONSE_LANGUAGES.map((language) => <option key={language.id} value={language.id}>{language.label}</option>)}
+				</select>
+			</SettingsRow>
 			<SettingsRow
 				label={`Version ${version || "unknown"}`}
 				testid="row-version"

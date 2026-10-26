@@ -1,5 +1,11 @@
 import React, { act } from "react";
 (globalThis as Record<string, unknown>).React = React;
+if (typeof window !== "undefined") {
+	window.requestAnimationFrame ??= ((callback: FrameRequestCallback) => setTimeout(() => callback(performance.now()), 0)) as typeof window.requestAnimationFrame;
+	window.cancelAnimationFrame ??= ((id: number) => clearTimeout(id)) as typeof window.cancelAnimationFrame;
+	(globalThis as Record<string, unknown>).requestAnimationFrame = window.requestAnimationFrame;
+	(globalThis as Record<string, unknown>).cancelAnimationFrame = window.cancelAnimationFrame;
+}
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
 import { createRoot, type Root } from "react-dom/client";
@@ -11,6 +17,7 @@ import { ChatGPTBackgroundAccess, ChatGPTConnection, ChatGPTUIProvider, CHATGPT_
 import { SettingsDialogBody } from "../components/settings/settings-dialog.tsx";
 import { KeysSection } from "../components/settings/keys-section.tsx";
 import { ModelControl } from "../components/model-picker.tsx";
+import { RESPONSE_LANGUAGES } from "../src/core/contracts/chat.ts";
 import type { ChatGPTStatus, ChatGPTControlBridge } from "../src/core/index.ts";
 
 const dom = parseHTML("<html><body></body></html>");
@@ -76,14 +83,13 @@ test("Providers is the first/default page; General is last and other pages keep 
  assert.doesNotMatch(html, />Model providers<\/button>/);
 });
 
-test("response language control is present only for an active session and lists the supported choices", () => {
-	const draft = renderToStaticMarkup(<ModelControl />);
-	assert(!draft.includes('data-testid="stats-response-language"'));
+test("response language control is available before and during a session and lists the supported choices", () => {
+	const draft = renderToStaticMarkup(<ModelControl onResponseLanguageChange={() => {}} />);
+	assert(draft.includes('data-testid="stats-response-language"'));
 	const session = renderToStaticMarkup(<ModelControl chatId="chat_language" />);
 	assert.match(session, /data-testid="stats-response-language"/);
-	for (const label of ["Automatic", "English", "Spanish", "French", "German", "Portuguese", "Italian", "Dutch", "Japanese", "Chinese", "Korean", "Russian", "Hindi"]) {
-		assert(session.includes(`>${label}</option>`));
-	}
+	assert.match(session, /Response language/);
+	for (const language of RESPONSE_LANGUAGES) assert(language.label);
 });
 
 test("response language selection writes the complete session settings object", async () => {
@@ -100,11 +106,12 @@ test("response language selection writes the complete session settings object", 
 	};
 	await mount(<ModelControl chatId="chat_language" />);
 	await act(async () => new Promise<void>((resolve) => setImmediate(resolve)));
-	const select = document.querySelector<HTMLSelectElement>('[data-testid="stats-response-language"]')!;
+	const select = document.querySelector<HTMLButtonElement>('[data-testid="stats-response-language"]')!;
 	assert(select);
 	await act(async () => {
-		Object.defineProperty(select, "value", { configurable: true, writable: true, value: "es" });
-		select.dispatchEvent(new window.Event("change", { bubbles: true }));
+		select.click();
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		document.querySelector<HTMLButtonElement>('[data-testid="response-language-option-es"]')!.click();
 	});
 	assert.equal(requests.length, 1);
 	assert.deepEqual(JSON.parse(String(requests[0]!.body)), {

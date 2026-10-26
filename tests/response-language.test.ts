@@ -33,7 +33,7 @@ describe("session response language", () => {
 
 	it("uses automatic guidance when selected", () => {
 		const agent = factories[0]!({ engine: engine(), chatId: "chat_language_auto", tools: {}, responseLanguage: "automatic" });
-		assert.match(agent.state.systemPrompt, /dominant language of their latest substantive learner-authored input/);
+		assert.match(agent.state.systemPrompt, /identify the dominant communication language of the latest substantive learner-authored input/);
 	});
 
 	it("keeps the compaction prompt accounting on the same prompt source", () => {

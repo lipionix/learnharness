@@ -209,13 +209,13 @@ export function MenuShell({
 		};
 		place();
 		const rePlace = () => {
-			cancelAnimationFrame(raf);
-			raf = requestAnimationFrame(place);
+			window.cancelAnimationFrame?.(raf);
+			raf = window.requestAnimationFrame?.(place) ?? 0;
 		};
 		window.addEventListener("scroll", rePlace, true);
 		window.addEventListener("resize", rePlace);
 		return () => {
-			cancelAnimationFrame(raf);
+			window.cancelAnimationFrame?.(raf);
 			window.removeEventListener("scroll", rePlace, true);
 			window.removeEventListener("resize", rePlace);
 		};

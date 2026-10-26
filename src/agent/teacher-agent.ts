@@ -86,8 +86,8 @@ export function responseLanguageInstruction(language: ResponseLanguage): string 
 	if (language === "automatic") {
 		return [
 			"## Response language",
-			"Answer the learner in the dominant language of their latest substantive learner-authored input.",
-			"Follow a clear language switch when the learner changes language; do not switch for brief quoted phrases, proper nouns, code, formulas, or source excerpts.",
+			"At the start of every turn, identify the dominant communication language of the latest substantive learner-authored input and answer in that language.",
+			"Re-evaluate this on every turn and follow a clear language switch immediately. Do not switch for brief quoted phrases, proper nouns, code, formulas, or source excerpts.",
 			"Keep code, formulas, identifiers, and quoted source text unchanged. Apply this policy to every learner-facing response, including questions, quizzes, and practice problems.",
 		].join("\n");
 	}

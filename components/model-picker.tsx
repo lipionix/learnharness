@@ -81,11 +81,12 @@ export function catalogLimits(catalog: Pick<ModelCatalogResponse, "models">): Ma
  * changing the new-session default. Unpicked reads "—" (the
  * no-factory-fallback language: the UI never presents a default model).
  */
-export function ModelControl({ chatId, onModelChange }: { chatId?: string; onModelChange?: (model: string | undefined) => void }) {
+export function ModelControl({ chatId, onModelChange, responseLanguageOverride, onResponseLanguageChange }: { chatId?: string; onModelChange?: (model: string | undefined) => void; responseLanguageOverride?: string; onResponseLanguageChange?: (language: string) => void }) {
 	const { catalog, refresh } = useModelCatalog();
 	const [models, setModels] = useState<ModelsSettings | undefined>();
 	const [session, setSession] = useState<ChatSettings | undefined>();
-	const [open, setOpen] = useState<"model" | "thinking" | null>(null);
+	const [generalLanguage, setGeneralLanguage] = useState("automatic");
+	const [open, setOpen] = useState<"model" | "thinking" | "language" | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 
@@ -113,6 +114,10 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				   ("—" triggers, closed menus) — same posture as a
 				   catalog failure */
 			});
+		fetch("/api/settings")
+			.then((r) => r.json() as Promise<{ settings: { general?: { responseLanguage?: string } } | null }>)
+			.then((body) => setGeneralLanguage(body.settings?.general?.responseLanguage ?? "automatic"))
+			.catch(() => {});
 	}, [chatId]);
 
 	useEffect(() => {
@@ -261,13 +266,18 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 		[chatId, models, save, saveChat],
 	);
 
-	const responseLanguage = session?.responseLanguage ?? "automatic";
+	const responseLanguage = (chatId ? session?.responseLanguage : responseLanguageOverride ?? generalLanguage) ?? "automatic";
 	const saveResponseLanguage = useCallback(
 		(next: string) => {
-			if (!chatId || !isResponseLanguage(next)) return;
+			if (!isResponseLanguage(next)) return;
+			if (!chatId) {
+				onResponseLanguageChange?.(next);
+				setOpen(null);
+				return;
+			}
 			void saveChat({ ...session, responseLanguage: next });
 		},
-		[chatId, saveChat, session],
+		[chatId, onResponseLanguageChange, saveChat, session],
 	);
 
 	// Shortcut seams (keyboard wave A): ⌘K opens the model menu (the
@@ -323,19 +333,22 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 
 	return (
 		<div ref={containerRef} className="relative flex items-center gap-1.5" data-testid="model-control">
-		{chatId && (
+		{(chatId || onResponseLanguageChange) && (
 			<Hint label="Response language" side="bottom">
-				<select
-					value={responseLanguage}
-					aria-label="Response language"
-					data-testid="stats-response-language"
-					onChange={(event) => saveResponseLanguage(event.target.value)}
-					className="max-w-28 rounded-full border bg-card/85 px-2 py-1 text-xs text-card-foreground shadow-lg backdrop-blur transition-colors hover:border-border hover:bg-muted"
-				>
-					{RESPONSE_LANGUAGES.map((language) => (
-						<option key={language.id} value={language.id}>{language.label}</option>
-					))}
-				</select>
+				<div className="relative">
+					<button type="button" aria-label="Response language" data-testid="stats-response-language" onClick={() => setOpen((o) => o === "language" ? null : "language")} className="flex items-center gap-1.5 rounded-full border bg-card/85 px-2.5 py-1 text-xs text-card-foreground shadow-lg backdrop-blur transition-colors hover:border-border hover:bg-muted">
+						{RESPONSE_LANGUAGES.find((language) => language.id === responseLanguage)?.label ?? "Automatic"}<span aria-hidden className="text-xs text-muted-foreground">▾</span>
+					</button>
+					{open === "language" && (
+						<MenuShell anchorRef={containerRef} testid="response-language-menu" preferredSide="up" menuClass="flex w-44 flex-col gap-0.5 rounded-xl border bg-card p-2 text-xs shadow-xl">
+							{RESPONSE_LANGUAGES.map((language) => (
+								<button key={language.id} type="button" data-testid={`response-language-option-${language.id}`} onClick={() => saveResponseLanguage(language.id)} className={`flex items-center justify-between rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted ${language.id === responseLanguage ? "bg-muted/60 text-card-foreground" : "text-card-foreground"}`}>
+									{language.label}{language.id === responseLanguage && <span aria-hidden>✓</span>}
+								</button>
+							))}
+						</MenuShell>
+					)}
+				</div>
 			</Hint>
 		)}
 			<Hint
